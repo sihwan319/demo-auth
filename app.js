@@ -31,11 +31,15 @@ app.use(session({
   store: sessionStore
 }));
 
+app.use(function(req, res, next) {
+const isAuth = req.session.isAuthenticated;
+});
+
 app.use(demoRoutes);
 
-// app.use(function(error, req, res, next) {
-//   res.render('500');
-// })
+app.use(function(error, req, res, next) {
+  res.render('500');
+})
 
 db.connectToDatabase().then(function () {
   app.listen(3000);
