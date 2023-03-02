@@ -10,8 +10,23 @@ router.get('/', function (req, res) {
 });
 
 router.get('/signup', function (req, res) {
-  res.render('signup');
+
+  let sessionInputData = req.session.inputData;
+
+  if(!sessionInputData) {
+    sessionInputData = {
+      hasError: false,
+      email: '',
+      confirmEmail: '',
+      password: ''
+    };
+  }
+
+  req.session.inputData = null;
+
+  res.render('signup', { inputData: sessionInputData });
 });
+
 
 router.get('/login', function (req, res) {
   res.render('login');
@@ -25,18 +40,30 @@ router.post('/signup', async function (req, res) {
 
 
   if (!enteredConfirmEmail ||
-     !enteredPassword || 
-     !enteredEmail || 
-     enteredEmail !== enteredConfirmEmail || 
-     enteredPassword < 6 ||
+    !enteredPassword ||
+    !enteredEmail ||
+    enteredEmail !== enteredConfirmEmail ||
+    enteredPassword < 6 ||
     !enteredPassword.includes('@')) {
-      console.log('data is wrong!');
-      return res.redirect('/signup');
+
+    req.session.inputData = {
+      hasError: true,
+      message: 'Invalid data input - Please check your data.',
+      email: enteredEmail,
+      confirmEmail: enteredConfirmEmail,
+      password: enteredPassword
+    };
+
+    req.session.save(function() {
+      res.redirect('/signup');
+    });
+    return;
   }
+
 
   const existingUser = await db.getDb().collection('users').findOne({ email: enteredEmail });
 
-  if(existingUser) {
+  if (existingUser) {
     console.log('User is already existing');
     return res.redirect('/signup');
   }
@@ -75,16 +102,28 @@ router.post('/login', async function (req, res) {
     return res.redirect('/login');
   }
 
-  console.log('User is authenticated');
-  res.redirect('/admin');
-
-
+  req.session.user = {
+    id: existingUser._id,
+    email: existingUser.email
+  };
+  req.session.isAuthenticated = true;
+  req.session.save(function () {   //session 정보가 저장된 후에 redirect가 이뤄질 수 있도록 하는 콜백함수.   
+    res.redirect('/admin');
+  });
 });
 
 router.get('/admin', function (req, res) {
+  if (!req.session.isAuthenticated) {
+    res.status(401).render('401');
+  }
   res.render('admin');
 });
 
-router.post('/logout', function (req, res) { });
+router.post('/logout', function (req, res) {
+  req.session.user = null;
+  req.session.isAuthenticated = false;
+
+  res.redirect('/');
+});
 
 module.exports = router;
