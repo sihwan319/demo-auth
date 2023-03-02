@@ -108,17 +108,30 @@ router.post('/login', async function (req, res) {
   };
   req.session.isAuthenticated = true;
   req.session.save(function () {   //session 정보가 저장된 후에 redirect가 이뤄질 수 있도록 하는 콜백함수.   
-    res.redirect('/admin');
+    res.redirect('/profile');
   });
 });
 
-router.get('/admin', function (req, res) {
+router.get('/admin', async function (req, res) {
   if (!req.session.isAuthenticated) {
     res.status(401).render('401');
   }
+
+  const user = await db.getDb().collection('users').findOne({_id: req.session.user.id});
+
+  if(!user || !user.isAdmin) {
+    res.status(403).render('403');
+  }
+
   res.render('admin');
 });
 
+router.get('/profile', function (req, res) {
+  if (!req.session.isAuthenticated) {
+    res.status(403).render('403');
+  }
+  res.render('profile');
+});
 router.post('/logout', function (req, res) {
   req.session.user = null;
   req.session.isAuthenticated = false;
